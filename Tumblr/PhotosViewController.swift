@@ -16,6 +16,11 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        tableView.dataSource = self
+        
+        let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(self, action: #selector(refreshControlAction(_:)), for:UIControlEvents.valueChanged)
+        tableView.insertSubview(refreshControl, at:0)
         
         // Network request snippet
         let url = URL(string: "https://api.tumblr.com/v2/blog/humansofnewyork.tumblr.com/posts/photo?api_key=Q6vHoaVm5L1u2ZAW1fqv3Jw48gFzYVg9P0vH0VHl3GVy6quoGV")!
@@ -34,13 +39,23 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
                 self.tableView.reloadData()
             }
         
-        //let refreshControl
-        
+            // Pull to refresh
+
         }
         task.resume()
-
         //tableView.delegate = self
-        tableView.dataSource = self
+        
+    }
+    
+    func refreshControlAction(_ refreshControl:UIRefreshControl) {
+        let url = URL(string: "https://api.tumblr.com/v2/blog/humansofnewyork.tumblr.com/posts/photo?api_key=Q6vHoaVm5L1u2ZAW1fqv3Jw48gFzYVg9P0vH0VHl3GVy6quoGV")!
+        let request = URLRequest(url: url, cachePolicy: . reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        let session = URLSession(configuration: .default, delegate: nil, delegateQueue: OperationQueue.main)
+        let task: URLSessionDataTask = session.dataTask(with:request){(data:Data?, response:URLResponse?, error:Error?) in
+            self.tableView.reloadData()
+            refreshControl.endRefreshing()
+        }
+        task.resume()
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
