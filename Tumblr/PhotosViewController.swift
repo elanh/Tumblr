@@ -9,14 +9,16 @@
 import UIKit
 import AlamofireImage
 
-class PhotosViewController: UIViewController, UITableViewDataSource {
+class PhotosViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
     @IBOutlet var tableView: UITableView!
     var posts: [[String: Any]] = []
-
+    var isMoreDataLoading = false
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.dataSource = self
+        tableView.delegate = self
         
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshControlAction(_:)), for:UIControlEvents.valueChanged)
@@ -38,12 +40,11 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
                 
                 self.tableView.reloadData()
             }
-        
+            
             // Pull to refresh
-
+            
         }
         task.resume()
-        //tableView.delegate = self
         
     }
     
@@ -62,7 +63,7 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
         let detailsViewController = segue.destination as! PhotoDetailsViewController
         let cell = sender as! UITableViewCell
         let indexPath = tableView.indexPath(for: cell)!
-
+        
         let post = posts[indexPath.row]
         if let photos = post["photos"] as? [[String: Any]] {
             let photo = photos[0]
@@ -71,11 +72,8 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
             let url = URL(string: urlString)
             detailsViewController.url = url
         }
-       
+        
     }
-
-    
-    
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return posts.count
@@ -93,12 +91,42 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
         }
         return cell
     }
-
+    
+    func loadMoreData() {
+        let url = URL(string: "https://api.tumblr.com/v2/blog/humansofnewyork.tumblr.com/posts/photo?api_key=Q6vHoaVm5L1u2ZAW1fqv3Jw48gFzYVg9P0vH0VHl3GVy6quoGV&offset=\(posts.count)")!
+        let request = URLRequest(url: url, cachePolicy: . reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        let session = URLSession(configuration: .default, delegate: nil, delegateQueue: OperationQueue.main)
+        let task: URLSessionDataTask = session.dataTask(with:request){(data:Data?, response:URLResponse?, error:Error?) in
+            if let error = error {
+                print(error.localizedDescription)
+            } else if let data = data,
+                let dataDictionary = try! JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                let responseDictionary = dataDictionary["response"] as! [String: Any]
+                self.posts += responseDictionary["posts"] as! [[String: Any]]
+                self.tableView.reloadData()
+            }
+            self.tableView.reloadData()
+            self.isMoreDataLoading = false
+        }
+        task.resume()
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if (!isMoreDataLoading) {
+            let scrollViewContentHeight = tableView.contentSize.height
+            let scrollOffsetThreshold = scrollViewContentHeight - tableView.bounds.size.height
+            
+            if(scrollView.contentOffset.y > scrollOffsetThreshold && tableView.isDragging) {
+                isMoreDataLoading = true
+                print("at bottom of screen")
+                loadMoreData()
+            }
+        }
+    }
+    
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-
-
 }
