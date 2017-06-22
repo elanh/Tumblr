@@ -22,32 +22,46 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
         let session = URLSession(configuration: .default,    delegate: nil, delegateQueue: OperationQueue.main)
         session.configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         let task = session.dataTask(with: url) { (data, response, error) in
+            //Stuff below will run when the network request returns
             if let error = error {
                 print(error.localizedDescription)
             } else if let data = data,
                 let dataDictionary = try! JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                print(dataDictionary)
                 
-                // TODO: Get the posts and store in posts property
-                // Get the dictionary from the response key
                 let responseDictionary = dataDictionary["response"] as! [String: Any]
-                // Store the returned array of dictionaries in our posts property
                 self.posts = responseDictionary["posts"] as! [[String: Any]]
                 
                 self.tableView.reloadData()
             }
+        
+        //let refreshControl
+        
         }
         task.resume()
 
         //tableView.delegate = self
         tableView.dataSource = self
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        let detailsViewController = segue.destination as! PhotoDetailsViewController
+        let cell = sender as! UITableViewCell
+        let indexPath = tableView.indexPath(for: cell)!
 
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+        let post = posts[indexPath.row]
+        if let photos = post["photos"] as? [[String: Any]] {
+            let photo = photos[0]
+            let originalSize = photo["original_size"] as! [String: Any]
+            let urlString = originalSize["url"] as! String
+            let url = URL(string: urlString)
+            detailsViewController.url = url
+        }
+       
     }
 
+    
+    
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return posts.count
     }
@@ -66,6 +80,10 @@ class PhotosViewController: UIViewController, UITableViewDataSource {
     }
 
     
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
 
 
 }
